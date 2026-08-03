@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg:          #1a1b26;
+  --bg-dark:     #0d0e18;
+  --bg-surface:  #1f2133;
+  --bg-elevated: #252840;
+  --border:      #2a2b3d;
+  --border-mid:  #363752;
+
+  --text:        #c5c8da;
+  --text-dim:    #7b7e9a;
+  --text-muted:  #484a62;
+
+  --blue:        #4f82e9;
+  --blue-hover:  #3d70d4;
+  --blue-dim:    rgba(79, 130, 233, 0.22);
+  --amber:       #eab740;
+  --amber-dim:   rgba(234, 183, 64, 0.14);
+  --green:       #4ade80;
+  --red:         #f87171;
+
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', 'Courier New', monospace;
+
+  --radius: 4px;
+  --radius-md: 6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #363752; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #464863; }
+
+::selection { background: rgba(79,130,233,0.3); }
+
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Syntax highlighting (used in visualiser code panel) ── */
+.sy-comment { color: #6a9955; font-style: italic; }
+.sy-keyword  { color: #cc7832; }
+.sy-builtin  { color: #9cdcfe; }
+.sy-string   { color: #ce9178; }
+.sy-number   { color: #b5cea8; }
+.sy-operator { color: #d4d4d4; }

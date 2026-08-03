@@ -1,0 +1,658 @@
+/* ── Full-screen overlay ─────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Overlay header ──────────────────────────────────────────────────────────── */
+.overlayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+  padding: 0 16px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.overlayTitle {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: #e8eaf0;
+  letter-spacing: -0.01em;
+}
+
+.overlayActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.regenBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: none;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.regenBtn:hover {
+  border-color: var(--blue);
+  color: var(--text);
+}
+
+.closeBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.closeBtn:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--red);
+}
+
+
+/* ── Main content ────────────────────────────────────────────────────────────── */
+.mainContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ── Dry Run tab ─────────────────────────────────────────────────────────────── */
+.dryRunWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Step controls + info bar */
+.stepBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111220;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.stepInfo {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stepSlider {
+  flex: 1;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.controls {
+  display: flex;
+  gap: 6px;
+}
+
+.ctrlBtn {
+  padding: 5px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.ctrlBtn:hover:not(:disabled) {
+  background: #2a2e4a;
+  border-color: #38bdf8;
+}
+
+.ctrlBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ctrlBtnPrimary {
+  background: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+  color: #0c0d14 !important;
+  font-weight: 600;
+}
+
+.ctrlBtnPrimary:hover:not(:disabled) {
+  background: #22a5e0 !important;
+}
+
+/* Explanation banner for current step */
+.explanationBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(56, 189, 248, 0.08);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.explanationIcon {
+  font-size: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.explanationText {
+  font-size: 13px;
+  color: #7dd3fc;
+  line-height: 1.55;
+}
+
+.explanationEmpty {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Table */
+.tableScroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.dryRunTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.dryRunTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.dryRunTable th {
+  padding: 9px 12px;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.dryRunTable td {
+  padding: 8px 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+.dryRunTable tbody tr {
+  transition: background 120ms;
+}
+
+.dryRunTable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rowActive {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-left: 3px solid #38bdf8;
+}
+
+.rowActive td:first-child {
+  padding-left: 9px;
+}
+
+.cellStep {
+  font-family: var(--font-code);
+  font-weight: 600;
+  color: #38bdf8;
+  text-align: center;
+  width: 50px;
+}
+
+.cellLine {
+  font-family: var(--font-code);
+  color: var(--text-dim);
+  text-align: center;
+  width: 50px;
+}
+
+.cellCode {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: #c9d1d9;
+  white-space: pre;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cellVars {
+  font-family: var(--font-code);
+  font-size: 12px;
+  max-width: 320px;
+}
+
+.varChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  margin: 2px 3px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.varChipName {
+  color: var(--text-dim);
+}
+
+.varChipEq {
+  color: var(--text-muted);
+}
+
+.varChipVal {
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.varChipChanged {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.varChipChanged .varChipVal {
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+.cellOutput {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--green);
+  max-width: 160px;
+  white-space: pre-wrap;
+}
+
+.cellExplanation {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  max-width: 300px;
+}
+
+.noStepMsg {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+
+/* ── Loading overlay ─────────────────────────────────────────────────────────── */
+.loadingOverlay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.loadingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loadingSpinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-mid);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.loadingHint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── Error overlay ───────────────────────────────────────────────────────────── */
+.errorOverlay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.errorContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.errorIcon {
+  font-size: 32px;
+}
+
+.errorText {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.errorRetry {
+  padding: 8px 24px;
+  background: #38bdf8;
+  border: none;
+  border-radius: var(--radius);
+  color: #0c0d14;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.errorRetry:hover {
+  background: #22a5e0;
+}
+
+.errorClose {
+  padding: 6px 16px;
+  background: none;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.errorClose:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+/* ── Auto-play controls ──────────────────────────────────────────────────────── */
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 68px;
+  justify-content: center;
+}
+
+.playBtnActive {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+}
+
+.speedSelect {
+  padding: 4px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms;
+}
+
+.speedSelect:hover {
+  border-color: #38bdf8;
+}
+
+.speedSelect:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+/* ── Event badges ────────────────────────────────────────────────────────────── */
+.eventBadge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.eventCall {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.eventReturn {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.eventException {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+/* ── Step cell ───────────────────────────────────────────────────────────────── */
+.stepBadgeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.stepNum {
+  font-family: var(--font-code);
+  font-weight: 600;
+  color: #38bdf8;
+}
+
+/* ── Call Stack cell ─────────────────────────────────────────────────────────── */
+.cellStack {
+  max-width: 180px;
+  vertical-align: top;
+  padding-top: 9px !important;
+}
+
+.stackFrames {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stackFrame {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: #a5b4fc;
+  padding: 1px 6px;
+  background: rgba(165, 180, 252, 0.08);
+  border-radius: 3px;
+  border-left: 2px solid rgba(165, 180, 252, 0.35);
+  white-space: nowrap;
+  display: block;
+}
+
+.stackDepth {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: var(--font-code);
+}
+
+.stackGlobal {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Row color variants ──────────────────────────────────────────────────────── */
+.rowCall {
+  border-left: 2px solid rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.03);
+}
+
+.rowReturn {
+  border-left: 2px solid rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.03);
+}
+
+.rowException {
+  border-left: 2px solid rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+/* ── Explanation banner variants ─────────────────────────────────────────────── */
+.bannerCall {
+  background: rgba(74, 222, 128, 0.08) !important;
+  border-bottom-color: rgba(74, 222, 128, 0.2) !important;
+}
+
+.bannerCall .explanationText {
+  color: #86efac !important;
+}
+
+.bannerReturn {
+  background: rgba(251, 191, 36, 0.08) !important;
+  border-bottom-color: rgba(251, 191, 36, 0.2) !important;
+}
+
+.bannerReturn .explanationText {
+  color: #fcd34d !important;
+}
+
+.bannerException {
+  background: rgba(248, 113, 113, 0.08) !important;
+  border-bottom-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+.bannerException .explanationText {
+  color: #fca5a5 !important;
+}
+
+/* ── Return value variable chip ──────────────────────────────────────────────── */
+.varChipRet {
+  border-color: rgba(251, 191, 36, 0.4) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+
+.varChipRet .varChipName {
+  color: #fbbf24 !important;
+}
+
+.varChipRet .varChipVal {
+  color: #fcd34d !important;
+}
+
+/* ── Reference/array variable chip (wider, monospace) ───────────────────────── */
+.varChipRef {
+  font-family: var(--font-code);
+  font-size: 10.5px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  vertical-align: top;
+}
+
+/* ── Flowchart legend: function-call shape ───────────────────────────────────── */
+.shapeCall {
+  background: #a5b4fc;
+  border-radius: 0;
+  border: 2px solid #a5b4fc;
+  position: relative;
+}
+
+.shapeCall::before,
+.shapeCall::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #a5b4fc;
+}
+
+.shapeCall::before {
+  left: -5px;
+}
+
+.shapeCall::after {
+  right: -5px;
+}

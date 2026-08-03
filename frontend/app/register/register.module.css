@@ -1,0 +1,8 @@
+.card {
+  max-width: 460px;
+}
+
+.nameRow {
+  display: flex;
+  gap: 10px;
+}
