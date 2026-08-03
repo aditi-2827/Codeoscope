@@ -1,0 +1,17 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+.next/
+dist/
+build/
+
+# ── Environment files (NEVER commit these) ────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.development
+
+# ── OS & Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
