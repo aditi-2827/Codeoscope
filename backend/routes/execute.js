@@ -1,19 +1,20 @@
 // backend/routes/execute.js
-// Code execution via JDoodle API (FREE — 20 credits/day, no credit card)
-// Sign up at https://www.jdoodle.com → Dashboard → API → Get Client ID & Secret
+// Code execution via Judge0 (self-hosted, unlimited — no token limits)
+// Judge0 runs locally at http://localhost:2358 via Docker
+
 const express = require('express');
 const axios   = require('axios');
 const router  = express.Router();
 
-const JDOODLE_URL = 'https://api.jdoodle.com/v1/execute';
+const JUDGE0_URL = 'http://localhost:2358/submissions?base64_encoded=false&wait=true';
 
-// JDoodle language identifiers + version indexes
-// Version index 0 = latest available
+// Judge0 Language IDs
 const LANG_MAP = {
-  python:     { language: 'python3',    versionIndex: '5' },
-  javascript: { language: 'nodejs',     versionIndex: '4' },
-  java:       { language: 'java',       versionIndex: '4' },
-  c:          { language: 'c',          versionIndex: '5' },
+  python:     71,   // Python 3.8.1
+  javascript: 63,   // Node.js 12.14.0
+  java:       62,   // OpenJDK 14.0.1
+  c:          50,   // GCC 9.2.0 (C)
+  cpp:        54,   // GCC 9.2.0 (C++)
 };
 
 router.post('/', async (req, res) => {
@@ -24,31 +25,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing "code" or "language" field' });
     }
 
-    const langConfig = LANG_MAP[language];
-    if (!langConfig) {
+    const languageId = LANG_MAP[language];
+    if (!languageId) {
       return res.status(400).json({ error: `Unsupported language: ${language}` });
     }
 
-    const clientId     = process.env.JDOODLE_CLIENT_ID;
-    const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
-
-    if (!clientId || clientId === 'your-jdoodle-client-id') {
-      return res.status(500).json({
-        error: 'JDoodle API not configured. Add JDOODLE_CLIENT_ID and JDOODLE_CLIENT_SECRET to backend/.env\n\n'
-             + 'Get them FREE at: https://www.jdoodle.com → Sign up → Dashboard → API',
-      });
-    }
-
-    // ── Call JDoodle API ─────────────────────────────────────────────────────
+    // ── Call Judge0 API ─────────────────────────────────────────────────────
     const startTime = Date.now();
 
-    const response = await axios.post(JDOODLE_URL, {
-      clientId,
-      clientSecret,
-      script:       code,
-      stdin:        stdin || '',
-      language:     langConfig.language,
-      versionIndex: langConfig.versionIndex,
+    const response = await axios.post(JUDGE0_URL, {
+      source_code: code,
+      language_id: languageId,
+      stdin:       stdin || '',
     }, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
@@ -57,27 +45,24 @@ router.post('/', async (req, res) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(4);
     const data    = response.data;
 
-    // JDoodle returns: { output, statusCode, memory, cpuTime }
-    // statusCode 200 = success, anything else = error
-    const isError = data.statusCode !== 200;
-    const output  = data.output || '';
-    const memory  = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
-    const cpuTime = data.cpuTime ? `${data.cpuTime} secs` : `${elapsed} secs`;
+    // Judge0 returns: { stdout, stderr, compile_output, status, time, memory }
+    // Status IDs: 3 = Accepted
+    const stdout        = data.stdout        || '';
+    const stderr        = data.stderr        || '';
+    const compileOutput = data.compile_output || '';
+    const statusId      = data.status?.id;
+    const isError       = statusId !== 3;
 
-    // JDoodle puts both stdout and stderr in the same "output" field
-    // Compilation errors also go here
-    // We detect errors by statusCode or common error patterns
-    const hasCompileError = isError ||
-      output.includes('error:') ||
-      output.includes('Error:') ||
-      output.includes('Traceback') ||
-      output.includes('SyntaxError') ||
-      output.includes('Exception');
+    // Prefer compile_output over stderr for error messages
+    const errorOutput = compileOutput || stderr || data.message;
+
+    const cpuTime = data.time   ? `${data.time} secs`                    : `${elapsed} secs`;
+    const memory  = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
 
     res.json({
-      status: hasCompileError ? 'Error' : 'Success',
-      stdout: hasCompileError ? '' : output,
-      stderr: hasCompileError ? output : '',
+      status: isError ? 'Error' : 'Success',
+      stdout: isError ? ''           : stdout,
+      stderr: isError ? errorOutput  : '',
       time:   cpuTime,
       memory: memory,
     });
@@ -87,6 +72,12 @@ router.post('/', async (req, res) => {
 
     if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
       return res.status(504).json({ error: 'Execution timed out (30s). Try simpler code.' });
+    }
+
+    if (err.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        error: 'Judge0 compiler is not running.\nOpen a terminal in the judge0 folder and run: docker-compose up -d',
+      });
     }
 
     const msg = err.response?.data?.error || err.message || 'Execution failed';

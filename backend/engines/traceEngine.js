@@ -5,19 +5,22 @@
 // JS     → injects __trace() calls after each statement
 // Java   → injects System.out.println trace after each statement
 // C      → injects printf trace after each statement
+// C++    → injects printf trace after each statement
 //
-// All instrumented code is sent to JDoodle for real execution.
+// All instrumented code is sent to Judge0 (self-hosted, unlimited) for execution.
 // Trace data is extracted from stdout and returned as structured JSON.
 
 const axios = require('axios');
 
-const JDOODLE_URL = 'https://api.jdoodle.com/v1/execute';
+const JUDGE0_URL = 'http://localhost:2358/submissions?base64_encoded=false&wait=true';
 
+// Judge0 Language IDs
 const LANG_MAP = {
-  python: { language: 'python3', versionIndex: '5' },
-  javascript: { language: 'nodejs', versionIndex: '4' },
-  java: { language: 'java', versionIndex: '4' },
-  c: { language: 'c', versionIndex: '5' },
+  python:     71,   // Python 3.8.1
+  javascript: 63,   // Node.js 12.14.0
+  java:       62,   // OpenJDK 14.0.1
+  c:          50,   // GCC 9.2.0
+  cpp:        54,   // GCC 9.2.0 (C++)
 };
 
 const MAX_STEPS = 60;
@@ -449,27 +452,30 @@ async function traceCode(code, language, stdin) {
     default: throw new Error(`No tracer for ${language}`);
   }
 
-  // Step 2: Send to JDoodle
-  const clientId = process.env.JDOODLE_CLIENT_ID;
-  const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
-
-  if (!clientId || clientId === 'your-jdoodle-client-id') {
-    throw new Error('JDoodle API not configured');
+  // Step 2: Send to Judge0 (self-hosted, unlimited — no token limits)
+  let response;
+  try {
+    response = await axios.post(JUDGE0_URL, {
+      source_code: instrumentedCode,
+      language_id: LANG_MAP[language],
+      stdin:       stdin || '',
+    }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
+    });
+  } catch (connErr) {
+    if (connErr.code === 'ECONNREFUSED') {
+      throw new Error('Judge0 is not running. Open a terminal in the judge0 folder and run: docker-compose up -d');
+    }
+    throw connErr;
   }
 
-  const response = await axios.post(JDOODLE_URL, {
-    clientId,
-    clientSecret,
-    script: instrumentedCode,
-    stdin: stdin || '',
-    language: langConfig.language,
-    versionIndex: langConfig.versionIndex,
-  }, {
-    headers: { 'Content-Type': 'application/json' },
-    timeout: 30000,
-  });
-
-  const output = response.data.output || '';
+  // Judge0 returns stdout and stderr separately
+  // Compile errors go to compile_output, runtime errors to stderr
+  const stdout        = response.data.stdout        || '';
+  const stderr        = response.data.stderr        || '';
+  const compileOutput = response.data.compile_output || '';
+  const output = stdout || compileOutput || stderr;
 
   // Step 3: Extract trace JSON from output
   const traceStartIdx = output.indexOf(TRACE_START);
