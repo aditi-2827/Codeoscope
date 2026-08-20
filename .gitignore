@@ -4,14 +4,43 @@ node_modules/
 dist/
 build/
 
-# ── Environment files (NEVER commit these) ────────────────────────────────────
+# ── Environment & Secrets ────────────────────────────────────────────────────
 .env
 .env.local
 .env.production
 .env.development
+.env.test
+judge0.conf
 
-# ── OS & Editor ───────────────────────────────────────────────────────────────
+# ── Judge0 / Docker Local Data ───────────────────────────────────────────────
+postgres-data/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS Files ──────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ──────────────────────────────────────────────────────────────
 .vscode/
-*.log
+.idea/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# ── Testing / Coverage ────────────────────────────────────────────────────────
+coverage/
+
+# ── Temporary / Cache Files ───────────────────────────────────────────────────
+.cache/
+*.tmp
+*.temp
