@@ -1,20 +1,20 @@
 // backend/routes/execute.js
-// Code execution via Judge0 (self-hosted, unlimited — no token limits)
+// Code execution via Judge0 (self-hosted)
 // Judge0 runs locally at http://localhost:2358 via Docker
 
 const express = require('express');
-const axios   = require('axios');
-const router  = express.Router();
+const axios = require('axios');
+const router = express.Router();
 
 const JUDGE0_URL = 'http://localhost:2358/submissions?base64_encoded=false&wait=true';
 
 // Judge0 Language IDs
 const LANG_MAP = {
-  python:     71,   // Python 3.8.1
+  python: 71,   // Python 3.8.1
   javascript: 63,   // Node.js 12.14.0
-  java:       62,   // OpenJDK 14.0.1
-  c:          50,   // GCC 9.2.0 (C)
-  cpp:        54,   // GCC 9.2.0 (C++)
+  java: 62,   // OpenJDK 14.0.1
+  c: 50,   // GCC 9.2.0 (C)
+  cpp: 54,   // GCC 9.2.0 (C++)
 };
 
 router.post('/', async (req, res) => {
@@ -36,34 +36,34 @@ router.post('/', async (req, res) => {
     const response = await axios.post(JUDGE0_URL, {
       source_code: code,
       language_id: languageId,
-      stdin:       stdin || '',
+      stdin: stdin || '',
     }, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
     });
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(4);
-    const data    = response.data;
+    const data = response.data;
 
     // Judge0 returns: { stdout, stderr, compile_output, status, time, memory }
     // Status IDs: 3 = Accepted
-    const stdout        = data.stdout        || '';
-    const stderr        = data.stderr        || '';
+    const stdout = data.stdout || '';
+    const stderr = data.stderr || '';
     const compileOutput = data.compile_output || '';
-    const statusId      = data.status?.id;
-    const isError       = statusId !== 3;
+    const statusId = data.status?.id;
+    const isError = statusId !== 3;
 
     // Prefer compile_output over stderr for error messages
     const errorOutput = compileOutput || stderr || data.message;
 
-    const cpuTime = data.time   ? `${data.time} secs`                    : `${elapsed} secs`;
-    const memory  = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
+    const cpuTime = data.time ? `${data.time} secs` : `${elapsed} secs`;
+    const memory = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
 
     res.json({
       status: isError ? 'Error' : 'Success',
-      stdout: isError ? ''           : stdout,
-      stderr: isError ? errorOutput  : '',
-      time:   cpuTime,
+      stdout: isError ? '' : stdout,
+      stderr: isError ? errorOutput : '',
+      time: cpuTime,
       memory: memory,
     });
 

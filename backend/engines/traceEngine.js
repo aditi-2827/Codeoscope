@@ -1,13 +1,11 @@
 // backend/engines/traceEngine.js
 // Custom Code Tracing Engine — NO AI, uses actual code execution
-//
 // Python  → sys.settrace() hook captures every line + variables
 // JS     → injects __trace() calls after each statement
 // Java   → injects System.out.println trace after each statement
 // C      → injects printf trace after each statement
 // C++    → injects printf trace after each statement
-//
-// All instrumented code is sent to Judge0 (self-hosted, unlimited) for execution.
+// All instrumented code is sent to Judge0 (self-hosted) for execution.
 // Trace data is extracted from stdout and returned as structured JSON.
 
 const axios = require('axios');
@@ -16,11 +14,11 @@ const JUDGE0_URL = 'http://localhost:2358/submissions?base64_encoded=false&wait=
 
 // Judge0 Language IDs
 const LANG_MAP = {
-  python:     71,   // Python 3.8.1
+  python: 71,   // Python 3.8.1
   javascript: 63,   // Node.js 12.14.0
-  java:       62,   // OpenJDK 14.0.1
-  c:          50,   // GCC 9.2.0
-  cpp:        54,   // GCC 9.2.0 (C++)
+  java: 62,   // OpenJDK 14.0.1
+  c: 50,   // GCC 9.2.0
+  cpp: 54,   // GCC 9.2.0 (C++)
 };
 
 const MAX_STEPS = 60;
@@ -458,7 +456,7 @@ async function traceCode(code, language, stdin) {
     response = await axios.post(JUDGE0_URL, {
       source_code: instrumentedCode,
       language_id: LANG_MAP[language],
-      stdin:       stdin || '',
+      stdin: stdin || '',
     }, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
@@ -472,8 +470,8 @@ async function traceCode(code, language, stdin) {
 
   // Judge0 returns stdout and stderr separately
   // Compile errors go to compile_output, runtime errors to stderr
-  const stdout        = response.data.stdout        || '';
-  const stderr        = response.data.stderr        || '';
+  const stdout = response.data.stdout || '';
+  const stderr = response.data.stderr || '';
   const compileOutput = response.data.compile_output || '';
   const output = stdout || compileOutput || stderr;
 
