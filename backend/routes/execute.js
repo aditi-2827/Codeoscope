@@ -17,14 +17,14 @@ const LANG_MAP = {
   cpp: 54,   // GCC 9.2.0 (C++)
 };
 
-// Judge0 Status ID → human-readable error type
+// Judge0 Status ID → human-readable error Type
 const STATUS_MAP = {
-  4:  'Wrong Answer',
-  5:  'Time Limit Exceeded',
-  6:  'Compilation Error',
-  7:  'Runtime Error',
-  8:  'Runtime Error',
-  9:  'Runtime Error',
+  4: 'Wrong Answer',
+  5: 'Time Limit Exceeded',
+  6: 'Compilation Error',
+  7: 'Runtime Error',
+  8: 'Runtime Error',
+  9: 'Runtime Error',
   10: 'Runtime Error',
   11: 'Runtime Error',
   12: 'Runtime Error',
@@ -66,14 +66,15 @@ router.post('/', async (req, res) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(4);
     const data = response.data;
 
-    // Judge0 returns: { stdout, stderr, compile_output, status, time, memory }
+    // Judge0 returns: { stdout, stderr, compile_output, status, time, memory  }
     // Status IDs: 3 = Accepted
     // NOTE: Python/JS runtime errors still get status=3 from Judge0
     //       but the traceback lands in stderr — treat stderr as an error indicator too.
-    const stdout        = data.stdout        || '';
-    const stderr        = data.stderr        || '';
+
+    const stdout = data.stdout || '';
+    const stderr = data.stderr || '';
     const compileOutput = data.compile_output || '';
-    const statusId      = data.status?.id;
+    const statusId = data.status?.id;
 
     // isError: bad Judge0 status OR stderr non-empty (Python/JS runtime exceptions)
     const isError = statusId !== 3 || !!stderr;
@@ -83,21 +84,21 @@ router.post('/', async (req, res) => {
     if (!errorType && isError) errorType = 'Runtime Error'; // stderr-only case
 
     // Best available error message — never blank when there is an error
-    const rawError    = compileOutput || stderr || data.message || '';
+    const rawError = compileOutput || stderr || data.message || '';
     const errorMessage = isError
       ? (rawError || `Execution failed (status ${statusId}: ${data.status?.description || 'Unknown'})`)
       : '';
 
-    const cpuTime = data.time   ? `${data.time} secs`                     : `${elapsed} secs`;
-    const memory  = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
+    const cpuTime = data.time ? `${data.time} secs` : `${elapsed} secs`;
+    const memory = data.memory ? `${(data.memory / 1024).toFixed(2)} Mb` : '—';
 
     res.json({
-      status:    isError ? 'Error'   : 'Success',
+      status: isError ? 'Error' : 'Success',
       errorType: errorType || null,
-      stdout:    stdout,          // always pass stdout — might have output before crash
-      stderr:    isError ? errorMessage : '',
-      time:      cpuTime,
-      memory:    memory,
+      stdout: stdout,          // always pass stdout — might have output before crash
+      stderr: isError ? errorMessage : '',
+      time: cpuTime,
+      memory: memory,
     });
 
   } catch (err) {
