@@ -109,7 +109,7 @@ int main() {
 }`,
 };
 
-/* ── Types ─────────────────────────────────────────────────────────────────── */
+/* ── Types ────────────────────────────── */
 interface OutputResult {
   status: "success" | "error";
   errorType: string;
@@ -145,7 +145,7 @@ interface HistoryEntry {
 
 type RightTab = "output" | "complexity";
 
-/* ── Helpers ────────────────────────────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────── */
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 60) return "Just now";
@@ -154,7 +154,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)} day ago`;
 }
 
-/* ── Component ─────────────────────────────────────────────────────────────── */
+/* ── Component ────────────────────────────────── */
 export default function EditorPage() {
   const router = useRouter();
   const { user, session, requireAuth, signOut } = useAuth();
@@ -204,7 +204,7 @@ export default function EditorPage() {
     fetch(`${API_BASE}/api/history`, { headers: { Authorization: `Bearer ${session.access_token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setHistory(data); })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setHistoryLoading(false));
   }, [user, session]);
 
