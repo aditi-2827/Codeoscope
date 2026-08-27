@@ -24,6 +24,11 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // ── Code size guard ──────────────────────────────────────────────────────────────────────
+    if (code.length > 10000) {
+      return res.status(413).json({ error: 'Code too large. Maximum 10,000 characters allowed.' });
+    }
+
     console.log(`[dryrun] ${language} code (${code.length} chars) — local trace engine`);
 
     const result = await buildDryRunData(code, language, stdin || '');

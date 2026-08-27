@@ -468,27 +468,27 @@ async function traceCode(code, language, stdin) {
     throw connErr;
   }
 
-  // Judge0 returns stdout and stderr separately
-  // Compile errors go to compile_output, runtime errors to stderr
-  const stdout = response.data.stdout || '';
-  const stderr = response.data.stderr || '';
+  // Judge0 returns stdout, stderr, and compile_output separately
+  const stdout        = response.data.stdout        || '';
+  const stderr        = response.data.stderr        || '';
   const compileOutput = response.data.compile_output || '';
-  const output = stdout || compileOutput || stderr;
+
+  // Combine stdout + stderr for trace extraction (trace output might land in either stream)
+  const fullOutput = stdout + '\n' + stderr;
 
   // Step 3: Extract trace JSON from output
-  const traceStartIdx = output.indexOf(TRACE_START);
-  const traceEndIdx = output.indexOf(TRACE_END);
+  const traceStartIdx = fullOutput.indexOf(TRACE_START);
+  const traceEndIdx   = fullOutput.indexOf(TRACE_END);
 
   if (traceStartIdx === -1 || traceEndIdx === -1) {
-    // No trace markers — execution probably failed
+    // No trace markers — execution failed due to syntax/compile/runtime error
+    const rawError = compileOutput || stderr || stdout || response.data.message || '';
     throw new Error(
-      output.includes('Error') || output.includes('error') || output.includes('Traceback')
-        ? `Code execution error:\n${output}`
-        : 'Tracing failed — no trace data in output. Code may have a runtime error.'
+      rawError ? rawError.trim() : 'Tracing failed — code has a syntax, compilation, or runtime error.'
     );
   }
 
-  const traceJson = output.substring(traceStartIdx + TRACE_START.length, traceEndIdx).trim();
+  const traceJson = fullOutput.substring(traceStartIdx + TRACE_START.length, traceEndIdx).trim();
 
   let steps;
   try {

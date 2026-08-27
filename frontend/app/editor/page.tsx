@@ -112,6 +112,7 @@ int main() {
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 interface OutputResult {
   status: "success" | "error";
+  errorType: string;
   time: string;
   memory: string;
   stdout: string;
@@ -329,7 +330,8 @@ export default function EditorPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Execution failed");
       setOutput({
-        status: data.stderr ? "error" : "success",
+        status: data.status === 'Success' ? "success" : "error",
+        errorType: data.errorType || "Error",
         time: data.time || "—",
         memory: data.memory || "—",
         stdout: data.stdout || "",
@@ -337,7 +339,7 @@ export default function EditorPage() {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Network error";
-      setOutput({ status: "error", time: "—", memory: "—", stdout: "", stderr: msg });
+      setOutput({ status: "error", errorType: "Error", time: "—", memory: "—", stdout: "", stderr: msg });
     } finally {
       setIsRunning(false);
     }
@@ -693,7 +695,7 @@ export default function EditorPage() {
                     <div className={styles.statusRow}>
                       <span className={styles.statusLabel}>Status :</span>
                       <span className={output.status === "success" ? styles.statusOk : styles.statusErr}>
-                        {output.status === "success" ? "Successfully executed" : "Runtime Error"}
+                        {output.status === "success" ? "Successfully executed" : (output.errorType || "Error")}
                       </span>
                     </div>
                     <div className={styles.statsRow}>

@@ -23,6 +23,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: `Unsupported language: ${language}. Supported: ${supportedLangs.join(', ')}` });
     }
 
+    // ── Code size guard ──────────────────────────────────────────────────────────────────────
+    if (code.length > 10000) {
+      return res.status(413).json({ error: 'Code too large. Maximum 10,000 characters allowed.' });
+    }
+
     console.log(`[visualize] Tracing ${language} code (${code.length} chars) via custom engine`);
 
     const result = await traceCode(code, language, req.body.stdin || '');
