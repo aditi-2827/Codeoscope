@@ -17,7 +17,7 @@ const LANG_MAP = {
   cpp: 54,   // GCC 9.2.0 (C++)
 };
 
-// Judge0 Status ID → human-readable error Type
+// Judge0 Status ID → human-readable 
 const STATUS_MAP = {
   4: 'Wrong Answer',
   5: 'Time Limit Exceeded',
