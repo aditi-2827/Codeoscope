@@ -144,36 +144,68 @@ _orig_print('${TRACE_END}')
 `.trim();
 }
 
-// ─── JAVASCRIPT INSTRUMENTOR ────────────────────────────────────────────────
-// Regex-based: finds all variable declarations and injects trace calls.
-function instrumentJavaScript(userCode) {
+// ─── CONTROL BLOCK NORMALIZER ────────────────────────────────────────────────
+// Safely wraps single-statement if/else if/else/while/for blocks in { ... }
+// so trace injections never separate 'if' from 'else' or break control structures.
+function normalizeControlBlocks(userCode) {
   const lines = userCode.split('\n');
+  const normalized = [];
 
-  // First pass: find all declared variable names
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const trimmed = line.trim();
+
+    // Match single-line control statement without braces, e.g. "if (x) return y;" or "else x = 1;"
+    const singleMatch = trimmed.match(/^((?:else\s+if|if|while|for)\s*\([^)]*\)|else)\s+(?!\{)(.+;?)$/);
+
+    if (singleMatch) {
+      const leadingSpace = line.slice(0, line.indexOf(trimmed[0]));
+      const header = singleMatch[1];
+      const body = singleMatch[2];
+      line = `${leadingSpace}${header} { ${body} }`;
+    } else {
+      // Check multi-line control statement missing braces: header on line i, statement on line i+1
+      const headerMatch = trimmed.match(/^((?:else\s+if|if|while|for)\s*\([^)]*\)|else)$/);
+      if (headerMatch && i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        const nextTrimmed = nextLine.trim();
+        if (nextTrimmed && !nextTrimmed.startsWith('{') && !nextTrimmed.startsWith('//')) {
+          const leadingSpace = line.slice(0, line.indexOf(trimmed[0]));
+          line = `${line} {`;
+          lines[i + 1] = `${lines[i + 1]} }`;
+        }
+      }
+    }
+
+    normalized.push(line);
+  }
+
+  return normalized.join('\n');
+}
+
+// ─── JAVASCRIPT INSTRUMENTOR ────────────────────────────────────────────────
+function instrumentJavaScript(userCode) {
+  const normalizedCode = normalizeControlBlocks(userCode);
+  const lines = normalizedCode.split('\n');
+  const origLines = userCode.split('\n');
+
+  // Extract declared variable names safely
   const varNames = new Set();
   for (const line of lines) {
     const trimmed = line.trim();
-    // Match: let x, const x, var x (with or without assignment)
-    const declMatch = trimmed.match(/(?:let|const|var)\s+(\w+)/g);
-    if (declMatch) {
-      for (const m of declMatch) {
-        const name = m.replace(/(?:let|const|var)\\s+/, '');
-        varNames.add(name);
-      }
+    const matches = trimmed.matchAll(/(?:let|const|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g);
+    for (const m of matches) {
+      if (m[1]) varNames.add(m[1]);
     }
-    // Match: function foo(
-    const funcMatch = trimmed.match(/function\s+(\w+)/);
+    const funcMatch = trimmed.match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/);
     if (funcMatch) varNames.add(funcMatch[1]);
   }
 
   const varList = [...varNames];
-
-  // Build the trace capture expression
   const captureVars = varList.map(v =>
-    `try { __vars["${v}"] = typeof ${v} !== 'undefined' ? ${v} : undefined; } catch(e) {}`
-  ).join('; ');
+    `try { if (typeof ${v} !== 'undefined') __vars["${v}"] = ${v}; } catch(e) {}`
+  ).join('\n  ');
 
-  // Build instrumented code
   let instrumented = `
 var __steps = [];
 var __output = [];
@@ -181,7 +213,7 @@ var __MAX = ${MAX_STEPS};
 var __origLog = console.log;
 console.log = function() {
   var args = Array.prototype.slice.call(arguments);
-  __output.push(args.join(' ') + '\\n');
+  __output.push(args.map(function(a){ return typeof a === 'object' ? JSON.stringify(a) : String(a); }).join(' ') + '\\n');
 };
 
 function __trace(lineNum) {
@@ -199,22 +231,29 @@ function __trace(lineNum) {
 }
 `;
 
-  // Second pass: inject __trace() after each executable line
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    const lineNum = i + 1;
+    const line = lines[i];
+    const trimmed = line.trim();
+    const lineNum = Math.min(i + 1, origLines.length);
 
-    // Skip empty, comments, lone braces
-    if (!trimmed || trimmed.startsWith('//') || trimmed === '{' || trimmed === '}' || trimmed === '});') {
-      instrumented += lines[i] + '\\n';
-      continue;
-    }
+    const skipPreTrace =
+      !trimmed ||
+      trimmed.startsWith('//') ||
+      trimmed.startsWith('/*') ||
+      trimmed.startsWith('*') ||
+      trimmed.startsWith('}') ||
+      trimmed.startsWith('{') ||
+      trimmed.startsWith('else') ||
+      trimmed.startsWith('catch') ||
+      trimmed.startsWith('finally') ||
+      trimmed.startsWith('case ') ||
+      trimmed.startsWith('default:') ||
+      trimmed.startsWith('function ');
 
-    instrumented += lines[i] + '\\n';
-    // Don't inject after lines ending with { (block openers) or that are function declarations
-    if (!trimmed.endsWith('{') && !trimmed.endsWith(',') && !trimmed.startsWith('function ')) {
-      instrumented += `__trace(${lineNum});\\n`;
+    if (!skipPreTrace) {
+      instrumented += `__trace(${lineNum});\n`;
     }
+    instrumented += line + '\n';
   }
 
   instrumented += `
@@ -229,68 +268,41 @@ console.log('${TRACE_END}');
 
 // ─── JAVA INSTRUMENTOR ─────────────────────────────────────────────────────
 function instrumentJava(userCode) {
-  const lines = userCode.split('\n');
+  const normalizedCode = normalizeControlBlocks(userCode);
+  let instrumented = normalizedCode;
 
-  // Find variable declarations
-  const varNames = new Set();
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Match: int x, String x, double x, etc.
-    const declMatch = trimmed.match(/(?:int|long|float|double|char|boolean|String|int\[\]|String\[\])\s+(\w+)/g);
-    if (declMatch) {
-      for (const m of declMatch) {
-        const parts = m.split(/\s+/);
-        if (parts.length >= 2) varNames.add(parts[parts.length - 1]);
-      }
-    }
-  }
-
-  const varList = [...varNames];
-
-  // Build trace string builder for each variable
-  const traceVarCode = varList.map(v => {
-    return `
-      try {
-        sb.append("\\"${v}\\":");
-        if (${v} instanceof int[]) sb.append(java.util.Arrays.toString(${v}));
-        else sb.append("\\"" + ${v} + "\\"");
-        sb.append(",");
-      } catch (Exception e) {}`;
-  }).join('\\n');
-
-  // Inject trace method into Main class
-  let instrumented = userCode;
-
-  // Find the class body and inject trace infrastructure
-  const classMatch = instrumented.match(/(public\s+class\s+\w+\s*\{)/);
-  if (classMatch) {
-    const traceMethod = `
+  const helperCode = `
     static java.util.List<String> __steps = new java.util.ArrayList<>();
     static StringBuilder __output = new StringBuilder();
     static int __stepCount = 0;
+
     static void __trace(int line) {
       if (__stepCount >= ${MAX_STEPS}) return;
       __stepCount++;
-      StringBuilder sb = new StringBuilder();
-      sb.append("{\\"step\\":" + __stepCount + ",\\"line\\":" + line + ",\\"event\\":\\"line\\",\\"func\\":\\"main\\",\\"locals\\":{");
-      ${traceVarCode}
-      if (sb.charAt(sb.length()-1) == ',') sb.setLength(sb.length()-1);
-      sb.append("},\\"stdout\\":\\"" + __output.toString().replace("\\"", "\\\\\\\\\\"").replace("\\n", "\\\\\\\\n") + "\\"}");
-      __steps.add(sb.toString());
+      __steps.add("{\\"step\\":" + __stepCount + ",\\"line\\":" + line + ",\\"event\\":\\"line\\",\\"func\\":\\"main\\",\\"locals\\":{},\\"stdout\\":\\"\\"}");
     }
-    `;
-    instrumented = instrumented.replace(classMatch[1], classMatch[1] + traceMethod);
+
+    static void __finishTrace() {
+      System.out.println("${TRACE_START}");
+      System.out.println("[" + String.join(",", __steps) + "]");
+      System.out.println("${TRACE_END}");
+    }
+  `;
+
+  const classMatch = instrumented.match(/(public\s+class\s+\w+\s*\{)/);
+  if (classMatch) {
+    instrumented = instrumented.replace(classMatch[1], classMatch[1] + helperCode);
   }
 
-  // Inject trace calls after executable lines inside main method
-  const resultLines = instrumented.split('\n');
-  let inMain = false;
-  let braceCount = 0;
+  const lines = instrumented.split('\n');
   const finalLines = [];
+  let inMain = false;
+  let mainBraceCount = 0;
+  let mainEndIndex = -1;
 
-  for (let i = 0; i < resultLines.length; i++) {
-    const trimmed = resultLines[i].trim();
-    finalLines.push(resultLines[i]);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
     if (trimmed.includes('static void main') || trimmed.includes('public static void main')) {
       inMain = true;
@@ -298,141 +310,164 @@ function instrumentJava(userCode) {
 
     if (inMain) {
       for (const ch of trimmed) {
-        if (ch === '{') braceCount++;
-        if (ch === '}') braceCount--;
+        if (ch === '{') mainBraceCount++;
+        if (ch === '}') mainBraceCount--;
       }
-      if (braceCount <= 0) inMain = false;
 
-      if (trimmed.endsWith(';') && !trimmed.startsWith('//') && !trimmed.includes('__trace') && !trimmed.includes('__steps') && !trimmed.includes('__output')) {
+      const skipPreTrace =
+        !trimmed ||
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('/*') ||
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('}') ||
+        trimmed.startsWith('{') ||
+        trimmed.startsWith('else') ||
+        trimmed.startsWith('catch') ||
+        trimmed.startsWith('finally') ||
+        trimmed.startsWith('case ') ||
+        trimmed.startsWith('default:') ||
+        trimmed.includes('static void main') ||
+        trimmed.includes('public static void main') ||
+        trimmed.includes('__trace') ||
+        trimmed.includes('__steps') ||
+        trimmed.includes('__output');
+
+      if (!skipPreTrace) {
         finalLines.push(`      __trace(${i + 1});`);
       }
+      finalLines.push(line);
+
+      if (mainBraceCount === 0 && trimmed.includes('}')) {
+        inMain = false;
+        mainEndIndex = finalLines.length - 1;
+      }
+    } else {
+      finalLines.push(line);
     }
   }
 
-  // Add trace output before the closing of the class
-  const lastBrace = finalLines.lastIndexOf('}');
-  if (lastBrace > 0) {
-    // Find end of main method — add print before last }
-    const mainEndIdx = finalLines.length - 1;
-    // Insert before the last closing brace of main
-    for (let i = finalLines.length - 1; i >= 0; i--) {
-      if (finalLines[i].trim() === '}') {
-        finalLines.splice(i, 0, `
-    System.out.println("${TRACE_START}");
-    System.out.println("[" + String.join(",", __steps) + "]");
-    System.out.println("${TRACE_END}");
-`);
-        break;
-      }
+  if (mainEndIndex !== -1 && !finalLines.some(l => l.includes('__finishTrace();'))) {
+    const targetLine = finalLines[mainEndIndex];
+    if (targetLine.includes('main(') && targetLine.includes('}')) {
+      const lastBraceIdx = targetLine.lastIndexOf('}');
+      finalLines[mainEndIndex] = targetLine.slice(0, lastBraceIdx) + ' __finishTrace(); }';
+    } else {
+      finalLines.splice(mainEndIndex, 0, '      __finishTrace();');
     }
   }
 
   return finalLines.join('\n');
 }
 
-// ─── C INSTRUMENTOR ─────────────────────────────────────────────────────────
+// ─── C & C++ INSTRUMENTORS ──────────────────────────────────────────────────
 function instrumentC(userCode) {
-  const lines = userCode.split('\n');
+  const normalizedCode = normalizeControlBlocks(userCode);
+  let code = normalizedCode;
+  if (!code.includes('#include <stdio.h>')) code = '#include <stdio.h>\n' + code;
+  if (!code.includes('#include <string.h>')) code = '#include <string.h>\n' + code;
 
-  // Find variable declarations
-  const varNames = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Match: int x, float x, char x, double x (simple declarations)
-    const match = trimmed.match(/^(int|float|double|char|long)\s+(\w+)/);
-    if (match && !trimmed.includes('(')) {
-      varNames.push({ name: match[2], type: match[1] });
-    }
-    // Match: int arr[]
-    const arrMatch = trimmed.match(/^(int|float|double|char)\s+(\w+)\s*\[/);
-    if (arrMatch) {
-      varNames.push({ name: arrMatch[2], type: arrMatch[1] + '[]' });
-    }
-  }
-
-  // Build printf for each variable
-  const printVars = varNames.map(v => {
-    if (v.type.includes('[]')) return '';  // Skip arrays for simplicity
-    const fmt = v.type === 'int' || v.type === 'long' ? '%d' :
-      v.type === 'float' || v.type === 'double' ? '%f' :
-        v.type === 'char' ? '%c' : '%d';
-    return `printf("\\"${v.name}\\":\\"${fmt}\\",", ${v.name});`;
-  }).filter(Boolean).join(' ');
-
-  // Add stdio.h if not present
-  let code = userCode;
-  if (!code.includes('#include <stdio.h>')) {
-    code = '#include <stdio.h>\\n' + code;
-  }
-  if (!code.includes('#include <string.h>')) {
-    code = '#include <string.h>\\n' + code;
-  }
-
-  // Add trace globals and function
-  const traceFunc = `
+  const traceHeader = `
 int __step_count = 0;
-char __output_buf[4096] = "";
 char __steps_buf[32768] = "[";
 int __steps_first = 1;
 
-#define __TRACE(line) do { \\
-  if (__step_count < ${MAX_STEPS}) { \\
-    __step_count++; \\
-    char __tmp[1024]; \\
-    snprintf(__tmp, sizeof(__tmp), "%s{\\"step\\":%d,\\"line\\":%d,\\"event\\":\\"line\\",\\"func\\":\\"main\\",\\"locals\\":{", \\
-      __steps_first ? "" : ",", __step_count, line); \\
-    strncat(__steps_buf, __tmp, sizeof(__steps_buf)-strlen(__steps_buf)-1); \\
-    ${printVars ? `char __vartmp[512]; snprintf(__vartmp, sizeof(__vartmp), "${varNames.filter(v => !v.type.includes('[]')).map(v => `\\"${v.name}\\":\\"${v.type === 'int' || v.type === 'long' ? '%d' : v.type === 'float' || v.type === 'double' ? '%f' : '%c'}\\"`).join(',')}", ${varNames.filter(v => !v.type.includes('[]')).map(v => v.name).join(', ')}); strncat(__steps_buf, __vartmp, sizeof(__steps_buf)-strlen(__steps_buf)-1);` : ''} \\
-    strncat(__steps_buf, "},\\"stdout\\":\\"\\"}", sizeof(__steps_buf)-strlen(__steps_buf)-1); \\
-    __steps_first = 0; \\
-  } \\
-} while(0)
+void __trace(int line) {
+  if (__step_count < ${MAX_STEPS}) {
+    __step_count++;
+    char __tmp[512];
+    snprintf(__tmp, sizeof(__tmp), "%s{\\"step\\":%d,\\"line\\":%d,\\"event\\":\\"line\\",\\"func\\":\\"main\\",\\"locals\\":{},\\"stdout\\":\\"\\"}",
+      __steps_first ? "" : ",", __step_count, line);
+    strncat(__steps_buf, __tmp, sizeof(__steps_buf) - strlen(__steps_buf) - 1);
+    __steps_first = 0;
+  }
+}
+
+void __finish_trace() {
+  strncat(__steps_buf, "]", sizeof(__steps_buf) - strlen(__steps_buf) - 1);
+  printf("${TRACE_START}\\n");
+  printf("%s\\n", __steps_buf);
+  printf("${TRACE_END}\\n");
+  fflush(stdout);
+}
 `;
 
-  // Insert trace function after includes, before main
   const mainIdx = code.indexOf('int main');
-  if (mainIdx > 0) {
-    code = code.slice(0, mainIdx) + traceFunc + '\n' + code.slice(mainIdx);
+  if (mainIdx !== -1) {
+    code = code.slice(0, mainIdx) + traceHeader + '\n' + code.slice(mainIdx);
   }
 
-  // Inject __TRACE() after executable lines in main
-  const resultLines = code.split('\n');
-  let inMain = false;
-  let braceCount = 0;
+  const lines = code.split('\n');
   const finalLines = [];
+  let inMain = false;
+  let mainBraceCount = 0;
+  let mainEndIndex = -1;
 
-  for (let i = 0; i < resultLines.length; i++) {
-    const trimmed = resultLines[i].trim();
-    finalLines.push(resultLines[i]);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
     if (trimmed.includes('int main')) inMain = true;
 
     if (inMain) {
       for (const ch of trimmed) {
-        if (ch === '{') braceCount++;
-        if (ch === '}') braceCount--;
+        if (ch === '{') mainBraceCount++;
+        if (ch === '}') mainBraceCount--;
       }
-      if (braceCount <= 0 && inMain && trimmed === '}') inMain = false;
 
-      if (trimmed.endsWith(';') && !trimmed.startsWith('//') && !trimmed.startsWith('#') &&
-        !trimmed.includes('__TRACE') && !trimmed.includes('__step') && !trimmed.includes('__output') && !trimmed.includes('__steps')) {
-        finalLines.push(`  __TRACE(${i + 1});`);
+      if (trimmed.startsWith('return')) {
+        finalLines.push('  __finish_trace();');
       }
+
+      const skipPreTrace =
+        !trimmed ||
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('/*') ||
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('#') ||
+        trimmed.startsWith('}') ||
+        trimmed.startsWith('{') ||
+        trimmed.startsWith('else') ||
+        trimmed.startsWith('return') ||
+        trimmed.startsWith('case ') ||
+        trimmed.startsWith('default:') ||
+        trimmed.includes('int main') ||
+        trimmed.includes('__trace') ||
+        trimmed.includes('__steps') ||
+        trimmed.includes('__finish');
+
+      if (!skipPreTrace) {
+        finalLines.push(`  __trace(${i + 1});`);
+      }
+      finalLines.push(line);
+
+      if (mainBraceCount === 0 && trimmed.includes('}')) {
+        inMain = false;
+        mainEndIndex = finalLines.length - 1;
+      }
+    } else {
+      finalLines.push(line);
     }
   }
 
-  // Before return 0 or end of main, add output
-  const retIdx = finalLines.findIndex(l => l.trim().startsWith('return'));
-  if (retIdx > 0) {
-    finalLines.splice(retIdx, 0,
-      `  strncat(__steps_buf, "]", sizeof(__steps_buf)-strlen(__steps_buf)-1);`,
-      `  printf("${TRACE_START}\\n");`,
-      `  printf("%s\\n", __steps_buf);`,
-      `  printf("${TRACE_END}\\n");`
-    );
+  if (mainEndIndex !== -1 && !finalLines.some(l => l.includes('__finish_trace();'))) {
+    const targetLine = finalLines[mainEndIndex];
+    if (targetLine.includes('int main') && targetLine.includes('}')) {
+      const lastBraceIdx = targetLine.lastIndexOf('}');
+      finalLines[mainEndIndex] = targetLine.slice(0, lastBraceIdx) + ' __finish_trace(); }';
+    } else {
+      finalLines.splice(mainEndIndex, 0, '  __finish_trace();');
+    }
   }
 
   return finalLines.join('\n');
+}
+
+function instrumentCpp(userCode) {
+  let code = userCode;
+  if (!code.includes('#include <iostream>')) code = '#include <iostream>\n' + code;
+  if (!code.includes('#include <string>')) code = '#include <string>\n' + code;
+
+  return instrumentC(code);
 }
 
 // ─── MAIN: Instrument + Execute + Parse ─────────────────────────────────────
@@ -447,6 +482,7 @@ async function traceCode(code, language, stdin) {
     case 'javascript': instrumentedCode = instrumentJavaScript(code); break;
     case 'java': instrumentedCode = instrumentJava(code); break;
     case 'c': instrumentedCode = instrumentC(code); break;
+    case 'cpp': instrumentedCode = instrumentCpp(code); break;
     default: throw new Error(`No tracer for ${language}`);
   }
 
@@ -469,8 +505,8 @@ async function traceCode(code, language, stdin) {
   }
 
   // Judge0 returns stdout, stderr, and compile_output separately
-  const stdout        = response.data.stdout        || '';
-  const stderr        = response.data.stderr        || '';
+  const stdout = response.data.stdout || '';
+  const stderr = response.data.stderr || '';
   const compileOutput = response.data.compile_output || '';
 
   // Combine stdout + stderr for trace extraction (trace output might land in either stream)
@@ -478,11 +514,11 @@ async function traceCode(code, language, stdin) {
 
   // Step 3: Extract trace JSON from output
   const traceStartIdx = fullOutput.indexOf(TRACE_START);
-  const traceEndIdx   = fullOutput.indexOf(TRACE_END);
+  const traceEndIdx = fullOutput.indexOf(TRACE_END);
 
   if (traceStartIdx === -1 || traceEndIdx === -1) {
     // No trace markers — execution failed due to syntax/compile/runtime error
-    const rawError = compileOutput || stderr || stdout || response.data.message || '';
+    const rawError = compileOutput || stderr || stdout || (response.data.status ? response.data.status.description : '') || response.data.message || '';
     throw new Error(
       rawError ? rawError.trim() : 'Tracing failed — code has a syntax, compilation, or runtime error.'
     );
