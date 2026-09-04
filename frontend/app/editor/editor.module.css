@@ -835,6 +835,24 @@
   flex-shrink: 0;
 }
 
+.historyArrowBtn {
+  background: none;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 3px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms;
+}
+.historyArrowBtn:hover {
+  background: var(--bg-elevated);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
 .recentRunsTitle {
   font-family: var(--font-ui);
   font-size: 13px;

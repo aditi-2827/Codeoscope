@@ -208,6 +208,22 @@ export default function EditorPage() {
       .finally(() => setHistoryLoading(false));
   }, [user, session]);
 
+  // Check if navigating from History page with a snippet to load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("codeoscope_load_snippet");
+    if (raw) {
+      try {
+        const item = JSON.parse(raw);
+        if (item.language && item.code) {
+          setLang(item.language.toLowerCase());
+          setCode(item.code);
+        }
+      } catch { /* ignore */ }
+      sessionStorage.removeItem("codeoscope_load_snippet");
+    }
+  }, []);
+
   // Focus save input when modal opens
   useEffect(() => {
     if (saveOpen) setTimeout(() => saveInputRef.current?.focus(), 50);
@@ -793,7 +809,19 @@ export default function EditorPage() {
           {/* ── Recent Runs (History) ────────────────────────────────────── */}
           <div className={styles.recentRunsSection}>
             <div className={styles.recentRunsHeader}>
-              <h3 className={styles.recentRunsTitle}>RECENT SAVES</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h3 className={styles.recentRunsTitle}>RECENT SAVES</h3>
+                <button
+                  className={styles.historyArrowBtn}
+                  onClick={() => router.push("/history")}
+                  title="View full code history"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="7" y1="17" x2="17" y2="7" />
+                    <polyline points="7 7 17 7 17 17" />
+                  </svg>
+                </button>
+              </div>
               <button
                 className={styles.recentRunsViewAll}
                 onClick={() => setSaveOpen(true)}
@@ -810,7 +838,7 @@ export default function EditorPage() {
                   No saves yet. Hit &quot;Save&quot; to store a snippet.
                 </p>
               ) : (
-                history.map(entry => (
+                history.slice(0, 3).map(entry => (
                   <div
                     key={entry.id}
                     className={styles.recentRunItem}
