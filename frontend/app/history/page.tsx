@@ -83,6 +83,12 @@ export default function HistoryPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
+
+  useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
@@ -152,6 +158,16 @@ export default function HistoryPage() {
       ? "Java"
       : "C";
   const topLangCount = Math.max(pythonCount, jsCount, javaCount, cCount);
+
+  const languagesUsed = new Set(
+    history.map((h) => h.language.toLowerCase())
+  ).size;
+
+  const now = new Date();
+  const thisMonthCount = history.filter((h) => {
+    const d = new Date(h.created_at);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
@@ -295,7 +311,7 @@ export default function HistoryPage() {
             </div>
             <div className={styles.statDetails}>
               <span className={styles.statValue}>{totalExecutions}</span>
-              <span className={styles.statLabel}>Total Executions</span>
+              <span className={styles.statLabel}>Saved Snippets</span>
             </div>
           </div>
 
@@ -320,7 +336,7 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {/* Card 3: Successful */}
+          {/* Card 3: Languages Used */}
           <div className={styles.statCard}>
             <div className={`${styles.statIconBox} ${styles.iconBoxGreen}`}>
               <svg
@@ -336,12 +352,12 @@ export default function HistoryPage() {
               </svg>
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>{totalExecutions}</span>
-              <span className={styles.statLabel}>Successful</span>
+              <span className={styles.statValue}>{languagesUsed}</span>
+              <span className={styles.statLabel}>Languages Used</span>
             </div>
           </div>
 
-          {/* Card 4: Failed */}
+          {/* Card 4: Added This Month */}
           <div className={styles.statCard}>
             <div className={`${styles.statIconBox} ${styles.iconBoxRed}`}>
               <svg
@@ -358,8 +374,8 @@ export default function HistoryPage() {
               </svg>
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>0</span>
-              <span className={styles.statLabel}>Failed</span>
+              <span className={styles.statValue}>{thisMonthCount}</span>
+              <span className={styles.statLabel}>Added This Month</span>
             </div>
           </div>
         </div>
@@ -401,7 +417,7 @@ export default function HistoryPage() {
                     <th>TITLE</th>
                     <th style={{ width: "140px" }}>LANGUAGE</th>
                     <th style={{ width: "130px" }}>STATUS</th>
-                    <th style={{ width: "230px" }}>LAST EXECUTED</th>
+                    <th style={{ width: "230px" }}>SAVED ON</th>
                     <th style={{ width: "140px", textAlign: "right" }}>ACTIONS</th>
                   </tr>
                 </thead>
@@ -437,7 +453,7 @@ export default function HistoryPage() {
                             >
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
-                            Success
+                            Saved
                           </span>
                         </td>
                         <td className={styles.colDate}>

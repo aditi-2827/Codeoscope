@@ -181,6 +181,7 @@ export default function EditorPage() {
   // Save modal
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [saveError, setSaveError] = useState("");
   const saveInputRef = useRef<HTMLInputElement>(null);
 
   // History
@@ -272,6 +273,7 @@ export default function EditorPage() {
   const handleSaveConfirm = async () => {
     const name = saveName.trim();
     if (!name) return;
+    setSaveError("");
     setSaveOpen(false);
     setSaveName("");
     try {
@@ -280,16 +282,28 @@ export default function EditorPage() {
         headers: authHeaders(),
         body: JSON.stringify({ name, language: lang, code }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data?.error || `Save failed (${res.status})`;
+        setSaveOpen(true);
+        setSaveName(name);
+        setSaveError(msg);
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data.id) {
+      if (data.id) {
         setHistory(prev => [data, ...prev]);
       }
-    } catch { /* silently fail */ }
+    } catch {
+      setSaveOpen(true);
+      setSaveName(name);
+      setSaveError("Network error — could not reach the server.");
+    }
   };
 
   /* ── Load from history ─────────────────────────────────────────────────── */
   const handleLoadEntry = (entry: HistoryEntry) => {
-    setLang(entry.language);
+    setLang(entry.language.toLowerCase());
     setCode(entry.code);
     setOutput(null);
     setComplexity(null);
@@ -374,7 +388,7 @@ export default function EditorPage() {
 
       {/* ── Save Modal ────────────────────────────────────────────────────── */}
       {saveOpen && (
-        <div className={styles.modalBackdrop} onClick={() => { setSaveOpen(false); setSaveName(""); }}>
+        <div className={styles.modalBackdrop} onClick={() => { setSaveOpen(false); setSaveName(""); setSaveError(""); }}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -384,6 +398,7 @@ export default function EditorPage() {
               Save Snippet
             </h3>
             <p className={styles.modalSub}>Give your snippet a name so you can find it later.</p>
+            {saveError && <p className={styles.modalError}>{saveError}</p>}
             <input
               ref={saveInputRef}
               className={styles.modalInput}
@@ -452,7 +467,7 @@ export default function EditorPage() {
 
         <div className={styles.headerRight}>
           {/* Save */}
-          <button className={styles.headerActionBtn} title="Save snippet" onClick={() => { setSaveName(""); setSaveOpen(true); }}>
+          <button className={styles.headerActionBtn} title="Save snippet" onClick={() => { setSaveName(""); setSaveError(""); setSaveOpen(true); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
               <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
