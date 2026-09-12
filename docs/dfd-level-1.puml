@@ -1,0 +1,70 @@
+@startuml
+!theme plain
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam linetype ortho
+
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam database {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 11
+}
+
+skinparam arrow {
+  FontSize 10
+}
+
+title DFD Level 1
+
+left to right direction
+
+rectangle "User" as USER
+
+usecase "1 Authenticate" as P1
+usecase "2 Execute" as P2
+usecase "3 Analyze" as P3
+usecase "4 History" as P4
+
+rectangle "Judge0" as J0
+rectangle "Supabase" as SU
+database "Data\nStore" as DS
+
+USER --> P1 : credentials
+P1 --> USER : session
+P1 --> SU : verify
+SU --> P1 : user
+
+USER --> P2 : code
+P2 --> J0 : run
+J0 --> P2 : result
+P2 --> USER : output
+
+USER --> P3 : code
+P3 --> USER : analysis
+
+USER --> P4 : commands
+P4 --> DS : query
+DS --> P4 : data
+P4 --> USER : list
+P4 --> SU : save
+
+@enduml

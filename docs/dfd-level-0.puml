@@ -1,0 +1,47 @@
+@startuml
+!theme plain
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam linetype ortho
+
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam arrow {
+  FontSize 10
+}
+
+title DFD Level 0 - Context Diagram
+
+left to right direction
+
+rectangle "User" as USER
+usecase "Codeoscope\nSystem" as SYS
+rectangle "Judge0" as J0
+rectangle "Supabase" as SU
+
+USER --> SYS : code
+SYS --> USER : output
+
+SYS --> J0 : run
+J0 --> SYS : result
+
+SYS --> SU : save
+SU --> SYS : data
+
+@enduml

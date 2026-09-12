@@ -1,0 +1,54 @@
+@startuml
+!theme plain
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 11
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam top to bottom direction
+
+skinparam package {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+  BorderThickness 1
+}
+
+skinparam component {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 10
+  BorderThickness 1
+}
+
+title Codeoscope - UML Package Diagram
+
+package "View Layer" as View {
+  component "Editor" as Editor
+  component "Visualizer" as Visualizer
+  component "DryRun" as DryRun
+  component "History" as History
+  component "Authentication" as Auth
+}
+
+package "Business Layer" as Business {
+  component "Execute Code" as Execute
+  component "Visualize Code" as Visualize
+  component "Dry Run Code" as DryRunCode
+  component "Analyze Complexity" as Complexity
+  component "Save History" as SaveHistory
+  component "Authenticate User" as AuthUser
+}
+
+package "Model Layer" as Model {
+  component "User" as User
+  component "Snippets" as Snippets
+  component "Code Execution" as CodeExec
+}
+
+View -down-> Business
+Business -down-> Model
+
+@enduml

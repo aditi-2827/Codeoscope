@@ -1,0 +1,60 @@
+@startuml
+!theme plain
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam linetype ortho
+
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 12
+  FontStyle bold
+}
+
+skinparam database {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 11
+}
+
+skinparam arrow {
+  FontSize 10
+}
+
+title DFD Level 2 - Execute & Analyze Detail
+
+left to right direction
+
+rectangle "User" as USER
+
+usecase "2.1 Instrument" as P21
+usecase "2.2 Run" as P22
+usecase "2.3 Frames" as P23
+
+usecase "3.1 Complexity" as P31
+
+rectangle "Judge0" as J0
+
+USER --> P21 : code
+P21 --> P22 : instrumented
+P22 --> J0 : run
+J0 --> P22 : trace
+P22 --> P23 : trace
+P23 --> USER : frames
+
+USER --> P31 : code
+P31 --> USER : complexity
+
+@enduml

@@ -1,0 +1,73 @@
+@startuml
+!theme plain
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 11
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam handwritten false
+
+skinparam component {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+  FontSize 11
+  BorderThickness 1
+}
+
+skinparam interface {
+  BorderColor black
+  FontColor black
+  FontSize 9
+}
+
+title Codeoscope - UML Component Diagram
+
+component "User" as User
+component "Editor" as Editor
+component "Authentication" as Auth
+component "Visualizer" as Visualizer
+component "Trace Engine" as Trace
+component "Dry Run Engine" as DryRun
+component "Complexity Engine" as Complexity
+component "Judge0" as Judge0
+component "Supabase" as Supabase
+component "History" as History
+
+' --- Interfaces (ball-and-socket) ---
+
+Editor --() "EditorUI"
+User --() "EditorUI"
+
+Editor --() "CodeGen"
+Trace --() "CodeGen"
+
+Trace --() "TraceData"
+DryRun --() "TraceData"
+
+Trace --() "ExecRequest"
+Judge0 --() "ExecRequest"
+
+Auth --() "AuthService"
+Supabase --() "AuthService"
+
+Auth --() "UserData"
+User --() "UserData"
+
+History --() "SnippetData"
+Supabase --() "SnippetData"
+
+History --() "HistoryUI"
+User --() "HistoryUI"
+
+Editor --() "ComplexityAPI"
+Complexity --() "ComplexityAPI"
+
+Editor --() "StepDisplay"
+Visualizer --() "StepDisplay"
+
+Editor --() "DryRunDisplay"
+DryRun --() "DryRunDisplay"
+
+@enduml
