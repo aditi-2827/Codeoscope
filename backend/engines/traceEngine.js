@@ -509,6 +509,11 @@ async function traceCode(code, language, stdin) {
   const stderr = response.data.stderr || '';
   const compileOutput = response.data.compile_output || '';
 
+  // Real program output sits BEFORE the trace markers. Java/C instrumentors
+  // don't capture per-step stdout, so we use this as a fallback for those steps.
+  const markerIdx = stdout.indexOf(TRACE_START);
+  const programStdout = (markerIdx === -1 ? stdout : stdout.slice(0, markerIdx)).trim();
+
   // Combine stdout + stderr for trace extraction (trace output might land in either stream)
   const fullOutput = stdout + '\n' + stderr;
 
@@ -577,7 +582,7 @@ async function traceCode(code, language, stdin) {
       globals: globals,
       locals: locals,
       objects: objects,
-      stdout: s.stdout || '',
+      stdout: s.stdout || programStdout,
       returnValue: s.returnValue,
       error: s.error,
     };

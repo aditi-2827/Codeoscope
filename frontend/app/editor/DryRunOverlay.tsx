@@ -376,9 +376,7 @@ export default function DryRunOverlay({ code, language, languageId, onClose }: P
 
                             {/* Latest output line */}
                             <td className={styles.cellOutput}>
-                              {s.output
-                                ? s.output.split("\n").filter(Boolean).pop() || "—"
-                                : "—"}
+                              {s.output ? s.output.trim() : "—"}
                             </td>
                           </tr>
                         );
