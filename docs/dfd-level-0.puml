@@ -23,7 +23,9 @@ skinparam usecase {
 }
 
 skinparam arrow {
-  FontSize 10
+  FontSize 11
+  FontStyle bold
+  Color #000000
 }
 
 title DFD Level 0 - Context Diagram

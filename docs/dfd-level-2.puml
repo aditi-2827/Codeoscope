@@ -30,31 +30,51 @@ skinparam database {
 }
 
 skinparam arrow {
-  FontSize 10
+  FontSize 11
+  FontStyle bold
+  Color #000000
 }
 
-title DFD Level 2 - Execute & Analyze Detail
+title DFD Level 2 - Full Decomposition
 
 left to right direction
 
 rectangle "User" as USER
 
-usecase "2.1 Instrument" as P21
-usecase "2.2 Run" as P22
-usecase "2.3 Frames" as P23
-
-usecase "3.1 Complexity" as P31
+usecase "1.1 Verify" as P11
+usecase "2.1 Run" as P21
+usecase "3.1 Instrument" as P31
+usecase "3.2 Frames" as P32
+usecase "4.1 Table & Notes" as P41
+usecase "5.1 Parse" as P51
+usecase "5.2 Compute" as P52
+usecase "6.1 Save" as P61
+usecase "6.2 List" as P62
 
 rectangle "Judge0" as J0
+database "D1 Accounts" as D1
+database "D2 Snippets" as D2
 
-USER --> P21 : code
-P21 --> P22 : instrumented
-P22 --> J0 : run
-J0 --> P22 : trace
-P22 --> P23 : trace
-P23 --> USER : frames
+USER <--> P11 : credentials
+P11 <--> D1 : user
 
-USER --> P31 : code
-P31 --> USER : complexity
+USER <--> P21 : code
+P21 <--> J0 : result
+
+USER <--> P31 : code
+P31 <--> J0 : trace
+P31 --> P32 : trace
+P32 --> USER : frames
+P31 --> P41 : trace
+P41 --> USER : table
+
+USER <--> P51 : code
+P51 --> P52 : AST
+P52 --> USER : result
+
+USER <--> P61 : snippet
+P61 --> D2 : store
+USER <--> P62 : list
+P62 <--> D2 : data
 
 @enduml

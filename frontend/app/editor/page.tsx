@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import styles from "./editor.module.css";
 import VisualizerOverlay from "./VisualizerOverlay";
 import DryRunOverlay from "./DryRunOverlay";
+import { formatCode } from "@/lib/format";
 import type * as Monaco from "monaco-editor";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -154,6 +155,21 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)} day ago`;
 }
 
+/* ── Formatting provider registration ────────────────────────── */
+function registerFormattingProviders(monaco: typeof Monaco) {
+  const languages = ["python", "javascript", "java", "c"];
+  for (const id of languages) {
+    monaco.languages.registerDocumentFormattingEditProvider(id, {
+      provideDocumentFormattingEdits(model) {
+        const source = model.getValue();
+        const formatted = formatCode(source, id);
+        if (formatted === source) return [];
+        return [{ range: model.getFullModelRange(), text: formatted }];
+      },
+    });
+  }
+}
+
 /* ── Component ────────────────────────────────── */
 export default function EditorPage() {
   const router = useRouter();
@@ -171,6 +187,15 @@ export default function EditorPage() {
   const [visOpen, setVisOpen] = useState(false);
   const [dryRunOpen, setDryRunOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Theme (dark / light)
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("codeoscope_theme") as "dark" | "light") || "dark";
+  });
+
+  // Share feedback
+  const [copied, setCopied] = useState(false);
 
   // Complexity
   const [rightTab, setRightTab] = useState<RightTab>("output");
@@ -225,6 +250,32 @@ export default function EditorPage() {
     }
   }, []);
 
+  // Apply + persist theme
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("codeoscope_theme", theme);
+  }, [theme]);
+
+  // Load shared code from URL (?code=...&lang=...)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sharedCode = params.get("code");
+    const sharedLang = params.get("lang");
+    if (sharedCode) {
+      const valid = LANGUAGES.some(l => l.id === sharedLang);
+      if (valid && sharedLang) {
+        setLang(sharedLang as string);
+        setCode(sharedCode);
+        setOutput(null);
+        setComplexity(null);
+        setComplexErr("");
+      }
+      // Clean the URL so a refresh doesn't re-apply stale params
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // Focus save input when modal opens
   useEffect(() => {
     if (saveOpen) setTimeout(() => saveInputRef.current?.focus(), 50);
@@ -265,8 +316,17 @@ export default function EditorPage() {
 
   /* ── Format ────────────────────────────────────────────────────────────── */
   const handleFormat = () => {
-    editorRef.current?.getAction("editor.action.formatDocument")?.run();
-    editorRef.current?.focus();
+    const ed = editorRef.current;
+    if (!ed) return;
+    const model = ed.getModel();
+    if (!model) return;
+    const action = ed.getAction("editor.action.formatDocument");
+    if (action) {
+      action.run();
+    } else {
+      ed.executeEdits("format", [{ range: model.getFullModelRange(), text: formatCode(code, lang) }]);
+    }
+    ed.focus();
   };
 
   /* ── Save to Supabase ──────────────────────────────────────────────────── */
@@ -477,22 +537,47 @@ export default function EditorPage() {
 
           {/* Share */}
           <button className={styles.headerActionBtn} title="Copy shareable link"
-            onClick={() => {
+            onClick={async () => {
               const url = `${window.location.origin}/editor?code=${encodeURIComponent(code)}&lang=${lang}`;
-              navigator.clipboard.writeText(url);
-            }}>
+              try {
+                await navigator.clipboard.writeText(url);
+              } catch {
+                // Fallback for non-secure contexts
+                const ta = document.createElement("textarea");
+                ta.value = url;
+                ta.style.position = "fixed";
+                ta.style.opacity = "0";
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand("copy"); } catch { }
+                document.body.removeChild(ta);
+              }
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+          }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
-            Share
+            {copied ? "Copied!" : "Share"}
           </button>
 
-          {/* Dark mode (placeholder) */}
-          <button className={styles.headerIconBtn} title="Toggle theme">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
+          {/* Theme toggle */}
+          <button className={styles.headerIconBtn} title="Toggle theme"
+            onClick={() => setTheme(t => (t === "dark" ? "light" : "dark"))}>
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
           </button>
 
           {/* User */}
@@ -624,7 +709,8 @@ export default function EditorPage() {
               height="100%"
               language={currentLang.mono}
               value={code}
-              theme="vs-dark"
+              theme={theme === "dark" ? "vs-dark" : "light"}
+              beforeMount={registerFormattingProviders}
               onMount={handleEditorMount}
               onChange={v => setCode(v ?? "")}
               options={{
@@ -828,7 +914,7 @@ export default function EditorPage() {
                 <h3 className={styles.recentRunsTitle}>RECENT SAVES</h3>
                 <button
                   className={styles.historyArrowBtn}
-                  onClick={() => router.push("/history")}
+                  onClick={() => router.push(user ? "/history" : "/login")}
                   title="View full code history"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

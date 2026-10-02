@@ -30,7 +30,9 @@ skinparam database {
 }
 
 skinparam arrow {
-  FontSize 10
+  FontSize 11
+  FontStyle bold
+  Color #000000
 }
 
 title DFD Level 1
@@ -39,32 +41,28 @@ left to right direction
 
 rectangle "User" as USER
 
-usecase "1 Authenticate" as P1
+usecase "1 Auth" as P1
 usecase "2 Execute" as P2
-usecase "3 Analyze" as P3
-usecase "4 History" as P4
+usecase "3 Visualize" as P3
+usecase "4 Dry Run" as P4
+usecase "5 Complexity" as P5
+usecase "6 History" as P6
 
 rectangle "Judge0" as J0
-rectangle "Supabase" as SU
-database "Data\nStore" as DS
+database "D1 Accounts" as D1
+database "D2 Snippets" as D2
 
-USER --> P1 : credentials
-P1 --> USER : session
-P1 --> SU : verify
-SU --> P1 : user
+USER <--> P1 : credentials
+USER <--> P2 : code
+USER <--> P3 : code
+USER <--> P4 : code
+USER <--> P5 : code
+USER <--> P6 : commands
 
-USER --> P2 : code
-P2 --> J0 : run
-J0 --> P2 : result
-P2 --> USER : output
+P2 <--> J0 : result
+P3 <--> J0 : trace
 
-USER --> P3 : code
-P3 --> USER : analysis
-
-USER --> P4 : commands
-P4 --> DS : query
-DS --> P4 : data
-P4 --> USER : list
-P4 --> SU : save
+P1 <--> D1 : user
+P6 <--> D2 : snippets
 
 @enduml

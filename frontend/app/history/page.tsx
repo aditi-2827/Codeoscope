@@ -45,7 +45,7 @@ function formatDate(dateStr: string): string {
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,10 +83,10 @@ export default function HistoryPage() {
   }, [session]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.replace("/login");
     }
-  }, [loading, user, router]);
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     fetchHistory();
@@ -182,6 +182,18 @@ export default function HistoryPage() {
     if (l === "java") return styles.langBadgeJava;
     return styles.langBadgeC;
   };
+
+  if (authLoading) {
+    return (
+      <div className={styles.pageWrapper}>
+        <div className={styles.loadingBox}>
+          <div className={styles.spinner} />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!user) return null;
 
   return (
     <div className={styles.pageWrapper}>

@@ -5,12 +5,18 @@
   --bg-dark:     #0d0e18;
   --bg-surface:  #1f2133;
   --bg-elevated: #252840;
+  --bg-soft:     #2a2e4a;
+  --bg-deep:     #111220;
+  --bg-terminal: #1e1e1e;
   --border:      #2a2b3d;
   --border-mid:  #363752;
+  --scrollbar:   #363752;
+  --scrollbar-hover: #464863;
 
   --text:        #c5c8da;
   --text-dim:    #7b7e9a;
   --text-muted:  #484a62;
+  --text-strong: #e8eaf0;
 
   --blue:        #4f82e9;
   --blue-hover:  #3d70d4;
@@ -20,11 +26,48 @@
   --green:       #4ade80;
   --red:         #f87171;
 
+  --sky:         #38bdf8;
+  --sky-hover:   #22a5e0;
+  --sky-text:    #7dd3fc;
+  --indigo-text: #a5b4fc;
+
   --font-ui:   'Inter', system-ui, sans-serif;
   --font-code: 'JetBrains Mono', 'Courier New', monospace;
 
   --radius: 4px;
   --radius-md: 6px;
+}
+
+[data-theme="light"] {
+  --bg:          #eef0f6;
+  --bg-dark:     #ffffff;
+  --bg-surface:  #ffffff;
+  --bg-elevated: #f8f9fc;
+  --bg-soft:     #e4e7f0;
+  --bg-deep:     #f2f4fa;
+  --bg-terminal: #f8f9fc;
+  --border:      #d9dce8;
+  --border-mid:  #c6c9d9;
+  --scrollbar:   #c6c9d9;
+  --scrollbar-hover: #a7aabb;
+
+  --text:        #1c1e2a;
+  --text-dim:    #5a5d72;
+  --text-muted:  #9a9db0;
+  --text-strong: #1c1e2a;
+
+  --blue:        #2f6fe4;
+  --blue-hover:  #2457b8;
+  --blue-dim:    rgba(47, 111, 228, 0.12);
+  --amber:       #b3861a;
+  --amber-dim:   rgba(179, 134, 26, 0.10);
+  --green:       #15803d;
+  --red:         #b91c1c;
+
+  --sky:         #0284c7;
+  --sky-hover:   #0369a1;
+  --sky-text:    #0369a1;
+  --indigo-text: #6d28d9;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,8 +84,8 @@ body {
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #363752; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #464863; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 ::selection { background: rgba(79,130,233,0.3); }
 
@@ -56,3 +99,10 @@ a:hover { text-decoration: underline; }
 .sy-string   { color: #ce9178; }
 .sy-number   { color: #b5cea8; }
 .sy-operator { color: #d4d4d4; }
+
+[data-theme="light"] .sy-comment { color: #347a2e; }
+[data-theme="light"] .sy-keyword  { color: #9a4000; }
+[data-theme="light"] .sy-builtin  { color: #005fb8; }
+[data-theme="light"] .sy-string   { color: #a03d13; }
+[data-theme="light"] .sy-number   { color: #38761d; }
+[data-theme="light"] .sy-operator { color: #333333; }

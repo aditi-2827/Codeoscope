@@ -31,7 +31,7 @@
   font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text-strong);
   letter-spacing: -0.01em;
 }
 
@@ -103,7 +103,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  background: #1e1e1e;
+  background: var(--bg-terminal);
   min-height: 0;
 }
 
@@ -131,7 +131,7 @@
   width: 44px;
   text-align: right;
   padding-right: 16px;
-  color: #4a4b62;
+  color: var(--text-muted);
   user-select: none;
   flex-shrink: 0;
   font-size: 12.5px;
@@ -146,7 +146,7 @@
 }
 
 .lineText {
-  color: #c9d1d9;
+  color: var(--text-dim);
   padding: 0 8px 0 2px;
   flex: 1;
 }
@@ -160,7 +160,7 @@
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  background: #111220;
+  background: var(--bg-deep);
 }
 
 .legendItem {
@@ -223,7 +223,7 @@
 }
 
 .ctrlBtn:hover:not(:disabled) {
-  background: #2a2e4a;
+  background: var(--bg-soft);
   border-color: var(--blue);
 }
 
@@ -257,7 +257,7 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background: #111220;
+  background: var(--bg-deep);
 }
 
 .codeOutputTitle {
@@ -265,7 +265,7 @@
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--text-strong);
 }
 
 .codeOutputArea {
@@ -456,7 +456,7 @@
   background: var(--bg-surface);
   font-family: var(--font-code);
   font-size: 13px;
-  color: #7dd3fc;
+  color: var(--sky-text);
   font-weight: 500;
 }
 
@@ -630,11 +630,11 @@
 }
 
 .lineCurrentBg .lineArrow {
-  color: #4ade80;
+  color: var(--green);
 }
 
 .lineNextBg .lineArrow {
-  color: #f87171;
+  color: var(--red);
 }
 
 /* ── Frames + Objects row ───────────────────────────────────────────────────── */
@@ -739,12 +739,12 @@
   border: 1px solid rgba(74, 233, 130, 0.3);
   border-radius: var(--radius);
   font-size: 12.5px;
-  color: #4ade80;
+  color: var(--green);
 }
 
 .returnBadge strong {
   font-family: var(--font-code);
-  color: #86efac;
+  color: var(--green);
 }
 
 /* ── Error badge ────────────────────────────────────────────────────────────── */
