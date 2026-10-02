@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
+import { normalizeEmail, isValidEmailFormat } from "@/lib/authValidation";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -14,14 +15,40 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [notConfirmed, setNotConfirmed] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) router.replace("/editor");
   }, [user, authLoading, router]);
 
+  const handleResend = async () => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || !isValidEmailFormat(normalizedEmail)) {
+      setError("Enter a valid email address first.");
+      return;
+    }
+    setResending(true);
+    setError("");
+    try {
+      await supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      setError("A new confirmation link was sent to your inbox.");
+      setNotConfirmed(false);
+    } catch {
+      setError("Could not resend the confirmation link. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotConfirmed(false);
 
     if (!email.trim()) { setError("Please enter your email address."); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
@@ -37,7 +64,8 @@ export default function LoginPage() {
         if (authError.message.includes("Invalid login credentials")) {
           setError("Incorrect email or password. Please try again.");
         } else if (authError.message.includes("Email not confirmed")) {
-          setError("Please check your email and confirm your account first.");
+          setError("Please confirm your email first — a link was sent to your inbox.");
+          setNotConfirmed(true);
         } else {
           setError(authError.message);
         }
@@ -108,7 +136,14 @@ export default function LoginPage() {
                 <line x1="15" y1="9" x2="9" y2="15"/>
                 <line x1="9" y1="9" x2="15" y2="15"/>
               </svg>
-              {error}
+              <span>
+                {error}
+                {notConfirmed && (
+                  <button type="button" className={styles.resendBtn} onClick={handleResend} disabled={resending || loading}>
+                    {resending ? "Sending…" : "Resend confirmation link"}
+                  </button>
+                )}
+              </span>
             </div>
           )}
 

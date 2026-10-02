@@ -702,7 +702,7 @@ export default function EditorPage() {
       {/* ── Main Area ───────────────────────────────────────────────────────── */}
       <div className={styles.main}>
 
-        {/* LEFT — Monaco editor with file badge */}
+        {/* LEFT — Monaco editor */}
         <div className={styles.editorPanel}>
           <div className={styles.editorInner}>
             <MonacoEditor
@@ -729,7 +729,6 @@ export default function EditorPage() {
                 padding: { top: 12 },
               }}
             />
-            <span className={styles.fileBadge}>{fileName}</span>
           </div>
         </div>
 

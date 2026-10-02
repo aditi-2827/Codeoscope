@@ -36,6 +36,7 @@ app.use('/api/visualize',  execLimiter, require('./routes/visualize'));
 app.use('/api/dryrun',     execLimiter, require('./routes/dryrun'));
 app.use('/api/complexity', require('./routes/complexity'));
 app.use('/api/history',    require('./routes/history'));
+app.use('/api/auth',       require('./routes/auth'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

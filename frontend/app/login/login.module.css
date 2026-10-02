@@ -232,6 +232,45 @@
   opacity: 0.5;
 }
 
+.fieldInputError {
+  border-color: var(--red) !important;
+}
+
+.fieldInputError:focus {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
+
+.fieldError {
+  font-size: 12px;
+  color: var(--red);
+  line-height: 1.4;
+}
+
+.resendBtn {
+  display: inline-block;
+  margin-top: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resendBtn:hover:not(:disabled) {
+  color: var(--blue-hover);
+}
+
+.resendBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .fieldRow {
   display: flex;
   gap: 12px;

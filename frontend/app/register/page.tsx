@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext";
+import { validateSignup, cleanName, normalizeEmail, isValidEmailFormat } from "@/lib/authValidation";
+import type { AuthErrors } from "@/lib/authValidation";
 import styles from "../login/login.module.css";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,33 +19,79 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<AuthErrors>({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) router.replace("/editor");
   }, [user, authLoading, router]);
+
+  const handleResend = async () => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || !isValidEmailFormat(normalizedEmail)) {
+      setError("Enter a valid email address first.");
+      return;
+    }
+    setResending(true);
+    setError("");
+    try {
+      await supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      setSuccess(`A new confirmation link was sent to ${normalizedEmail}.`);
+    } catch {
+      setError("Could not resend the confirmation link. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    if (!email.trim()) { setError("Please enter your email address."); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+    const result = validateSignup({
+      firstName,
+      lastName,
+      email,
+      password,
+      confirmPassword,
+    });
+    setFieldErrors(result.errors);
+    if (!result.valid) return;
+
+    // Server-side double check (defense in depth — not UI-only rules).
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/validate-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: result.normalizedEmail }),
+      });
+      const server = await res.json();
+      if (server && server.valid === false) {
+        setFieldErrors({ email: server.reason || "This email is not allowed." });
+        return;
+      }
+    } catch {
+      // Backend unreachable — continue; client rules already passed.
+    }
 
     setLoading(true);
     try {
       const { data, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: result.normalizedEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
+            first_name: cleanName(firstName),
+            last_name: cleanName(lastName),
           },
         },
       });
@@ -55,7 +105,7 @@ export default function RegisterPage() {
 
       if (data.session) { router.push("/editor"); return; }
 
-      setSuccess("Account created! Check your inbox for a confirmation link.");
+      setSuccess(`Account created! Check ${result.normalizedEmail} for a confirmation link.`);
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
@@ -129,7 +179,14 @@ export default function RegisterPage() {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              {success}
+              <span>
+                {success}
+                {success.startsWith("Account created") && (
+                  <button type="button" className={styles.resendBtn} onClick={handleResend} disabled={resending || loading}>
+                    {resending ? "Sending…" : "Resend confirmation link"}
+                  </button>
+                )}
+              </span>
             </div>
           )}
 
@@ -139,25 +196,33 @@ export default function RegisterPage() {
                 <label htmlFor="first-name" className={styles.fieldLabel}>First Name</label>
                 <input
                   id="first-name"
-                  className={styles.fieldInput}
+                  className={`${styles.fieldInput} ${fieldErrors.firstName ? styles.fieldInputError : ""}`}
                   type="text"
                   placeholder="eg. John"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    if (fieldErrors.firstName) { const fe = { ...fieldErrors }; delete fe.firstName; setFieldErrors(fe); }
+                  }}
                   disabled={loading}
                 />
+                {fieldErrors.firstName && <span className={styles.fieldError}>{fieldErrors.firstName}</span>}
               </div>
               <div className={styles.fieldGroup}>
                 <label htmlFor="last-name" className={styles.fieldLabel}>Last Name</label>
                 <input
                   id="last-name"
-                  className={styles.fieldInput}
+                  className={`${styles.fieldInput} ${fieldErrors.lastName ? styles.fieldInputError : ""}`}
                   type="text"
                   placeholder="eg. Francisco"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    if (fieldErrors.lastName) { const fe = { ...fieldErrors }; delete fe.lastName; setFieldErrors(fe); }
+                  }}
                   disabled={loading}
                 />
+                {fieldErrors.lastName && <span className={styles.fieldError}>{fieldErrors.lastName}</span>}
               </div>
             </div>
 
@@ -165,43 +230,58 @@ export default function RegisterPage() {
               <label htmlFor="reg-email" className={styles.fieldLabel}>Email</label>
               <input
                 id="reg-email"
-                className={styles.fieldInput}
+                className={`${styles.fieldInput} ${fieldErrors.email ? styles.fieldInputError : ""}`}
                 type="email"
                 placeholder="eg. john@example.com"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (fieldErrors.email) { const fe = { ...fieldErrors }; delete fe.email; setFieldErrors(fe); }
+                }}
                 disabled={loading}
               />
+              {fieldErrors.email && <span className={styles.fieldError}>{fieldErrors.email}</span>}
             </div>
 
             <div className={styles.fieldGroup}>
               <label htmlFor="reg-password" className={styles.fieldLabel}>Password</label>
               <input
                 id="reg-password"
-                className={styles.fieldInput}
+                className={`${styles.fieldInput} ${fieldErrors.password ? styles.fieldInputError : ""}`}
                 type="password"
                 placeholder="Enter your password"
                 autoComplete="new-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) { const fe = { ...fieldErrors }; delete fe.password; setFieldErrors(fe); }
+                }}
                 disabled={loading}
               />
-              <span className={styles.passwordHint}>Must be at least 6 characters.</span>
+              {fieldErrors.password ? (
+                <span className={styles.fieldError}>{fieldErrors.password}</span>
+              ) : (
+                <span className={styles.passwordHint}>Minimum 8 characters with at least one letter and one number.</span>
+              )}
             </div>
 
             <div className={styles.fieldGroup}>
               <label htmlFor="reg-confirm" className={styles.fieldLabel}>Confirm Password</label>
               <input
                 id="reg-confirm"
-                className={styles.fieldInput}
+                className={`${styles.fieldInput} ${fieldErrors.confirmPassword ? styles.fieldInputError : ""}`}
                 type="password"
                 placeholder="Confirm your password"
                 autoComplete="new-password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (fieldErrors.confirmPassword) { const fe = { ...fieldErrors }; delete fe.confirmPassword; setFieldErrors(fe); }
+                }}
                 disabled={loading}
               />
+              {fieldErrors.confirmPassword && <span className={styles.fieldError}>{fieldErrors.confirmPassword}</span>}
             </div>
 
             <button type="submit" className={styles.submitBtn} disabled={loading}>
